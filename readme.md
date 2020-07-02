@@ -10,8 +10,8 @@ You define list of expected permissions and ownership once, then run the script 
 issues.
 
 ## Examples of use case
-- configuration files stored in git repo. When you go `git pull` or `git checkout file.conf` ownership and
-  permissions might change,
+- configuration files stored in git repo. When you do `git pull` or `git checkout file.conf` ownership and
+  permissions might change. Also, `git clone` probably doesn't result in the right ownership / permissions.  
 - someone runs an app as a different user (e.g. `root`), which results in some files having wrong permission / ownership,
 - some user had issues with permissions so they used `chmod -R 0777 .` Yay! 
 
@@ -81,10 +81,22 @@ for result in results:
         print(result)
 ```
 
-# Future improvements
+# Rule definitions
 
-- wildcard support in paths (e.g. apply the PermRule to '*.pem' files),
+- format `rwxrwxrwx` (user, group, others)
+- currently there's no support for setuid, setgid, sticky bit,
+- `X` in rule means that:
+    - directory must be executable,
+    - file might be executable
+- `?` means "whatever", i.e. `r?x----` means that a file must have read and execute permissions, and we don't care about
+  write permission
+
+# Future improvements
+- add support for `setuid, setgid, sticky bit`
+- support for rules like `ug+rwX,o+r-wx`
+- wildcard support in paths (e.g. apply the `PermRule` to `*.pem` files),
 - relative paths in overrides,
 - define rules in yml / text files,
-- docker support,
+- change permissions and ownership when they do not match expectations,
+- docker support (e.g. "user www-data from container php can write to /var/run/mysqld/mysqld.sock"),
 - make code more pythonic
