@@ -7,7 +7,7 @@ ownership related issues are quite common, yet they're tedious to debug. This to
 
 
 You define list of expected permissions and ownership once, then run the script which reports on any found
-issues.
+issues. The tool can also fix the permissions and ownership for you (check the advanced example)
 
 ## Examples of use case
 - configuration files stored in git repo. When you do `git pull` or `git checkout file.conf` ownership and
@@ -75,7 +75,11 @@ tester = PermRuleGroup({
     )
 })
 
-results = tester.test()
+perm_fixer = None
+if True:
+    perm_fixer = PermFixer()
+
+results = tester.test(fixer=perm_fixer)
 for result in results:
     if result.status != "SUCCESS":
         print(result)
@@ -97,6 +101,5 @@ for result in results:
 - wildcard support in paths (e.g. apply the `PermRule` to `*.pem` files),
 - relative paths in overrides,
 - define rules in yml / text files,
-- change permissions and ownership when they do not match expectations,
 - docker support (e.g. "user www-data from container php can write to /var/run/mysqld/mysqld.sock"),
 - make code more pythonic
