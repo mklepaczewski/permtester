@@ -100,6 +100,8 @@ for result in results:
 - support for rules like `ug+rwX,o+r-wx`
 - wildcard support in paths (e.g. apply the `PermRule` to `*.pem` files),
 - relative paths in overrides,
+- add dry mode fixer,
+- switch to using `yield` to preserve memory,
 - define rules in yml / text files,
 - docker support (e.g. "user www-data from container php can write to /var/run/mysqld/mysqld.sock"),
 - make code more pythonic
