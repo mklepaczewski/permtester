@@ -118,22 +118,27 @@ class Perm:
 
 
 class PermFixer:
-    @staticmethod
-    def fix_uid_gid(path: str, uid: int, gid: int) -> CheckStatus:
+    def __init__(self, dry_mode: bool):
+        self.dry_mode = dry_mode
+
+    def fix_uid_gid(self, path: str, uid: int, gid: int) -> CheckStatus:
         try:
+            if self.dry_mode:
+                return CheckStatus(path, "NOTICE", f"Changed UID to {uid}, GID to {gid} (dry mode)")
             os.chown(path, uid, gid)
             return CheckStatus(path, "NOTICE", f"Changed UID to {uid}, GID to {gid}")
         except OSError as err:
             return CheckStatus(path, "ERROR", err.strerror)
 
-    @staticmethod
-    def fix_perms(path: str, expected_perms: Perm) -> CheckStatus:
+    def fix_perms(self, path: str, expected_perms: Perm) -> CheckStatus:
         try:
             # expected_perms may have wildcard permission "?" so we need to overlay it onto existing permissions of
             # the path
             target_numeric_perms = expected_perms.overlay_onto(path)
-            os.chmod(path, target_numeric_perms)
-            return CheckStatus(path, "NOTICE", f"Changed perms to {oct(target_numeric_perms)}")
+            if not self.dry_mode:
+                os.chmod(path, target_numeric_perms)
+                return CheckStatus(path, "NOTICE", f"Changed perms to {oct(target_numeric_perms)}")
+            return CheckStatus(path, "NOTICE", f"Changed perms to {oct(target_numeric_perms)} (dry mode)")
         except OSError as err:
             return CheckStatus(path, "ERROR", err.strerror)
 
