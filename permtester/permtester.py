@@ -77,7 +77,7 @@ class Perm:
                and self.group.test(perm.group, path) \
                and self.others.test(perm.others, path)
 
-    def _overlay_onto_unit(selfs, perm_unit: UnitPerm, st_mode: int, read_bits: int, write_bits: int, execute_bits: int) -> int:
+    def _overlay_onto_unit(self, perm_unit: UnitPerm, st_mode: int, read_bits: int, write_bits: int, execute_bits: int) -> int:
         new_perms = 0
 
         if perm_unit.read == "r":
