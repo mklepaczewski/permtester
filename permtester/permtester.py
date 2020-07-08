@@ -151,8 +151,30 @@ class Perm:
                 new_perms = new_perms | (path_stat.st_mode & libstat.S_IXOTH)
 
         return new_perms
+
     def __repr__(self):
         return f"[u:{str(self.user)} g:{str(self.group)} o:{str(self.others)}]"
+
+
+class PermFixer:
+    @staticmethod
+    def fix_uid_gid(path: str, uid: int, gid: int) -> CheckStatus:
+        try:
+            os.chown(path, uid, gid)
+            return CheckStatus(path, "NOTICE", f"Changed UID to {uid}, GID to {gid}")
+        except OSError as err:
+            return CheckStatus(path, "ERROR", err.strerror)
+
+    @staticmethod
+    def fix_perms(path: str, expected_perms: Perm) -> CheckStatus:
+        try:
+            # expected_perms may have wildcard permission "?" so we need to overlay it onto existing permissions of
+            # the path
+            target_numeric_perms = expected_perms.overlay_onto(path)
+            os.chmod(path, target_numeric_perms)
+            return CheckStatus(path, "NOTICE", f"Changed perms to {oct(target_numeric_perms)}")
+        except OSError as err:
+            return CheckStatus(path, "ERROR", err.strerror)
 
 
 class PermRule:
@@ -176,7 +198,7 @@ class PermRule:
         if path in self.overrides:
             return self.overrides[path]
 
-    def test(self, path: str) -> List[CheckStatus]:
+    def test(self, path: str, fixer: PermFixer = None) -> List[CheckStatus]:
 
         results = []
 
@@ -194,19 +216,27 @@ class PermRule:
 
         stat = os.stat(path)
 
+        fix_uid_gid = False
         if stat.st_uid != self.uid:
             results.append(CheckStatus(path, "ERROR", f"Expected UID = {self.uid}, got {stat.st_uid}"))
+            fix_uid_gid = True
         else:
             results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {self.uid}"))
 
         if stat.st_gid != self.gid:
             results.append(CheckStatus(path, "ERROR", f"Expected GID = {self.gid}, got {stat.st_gid}"))
+            fix_uid_gid = True
         else:
             results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {self.gid}"))
+
+        if fixer and fix_uid_gid:
+            results.append(fixer.fix_uid_gid(path, self.uid, self.gid))
 
         path_perms = Perm.from_stat(stat)
         if not self.perms.test(path_perms, path):
             results.append(CheckStatus(path, "ERROR", f"Expected perms = {self.perms}, got {path_perms}"))
+            if fixer:
+                results.append(fixer.fix_perms(path, self.perms))
         else:
             results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {self.perms}, git {path_perms}"))
 
@@ -214,7 +244,7 @@ class PermRule:
             with os.scandir(path) as it:
                 entry: os.DirEntry
                 for entry in it:
-                    results.extend(self.test(entry.path))
+                    results.extend(self.test(entry.path, fixer=fixer))
 
         return results
 
@@ -223,8 +253,8 @@ class PermRuleGroup:
     def __init__(self, perm_checkers: Dict[str, PermRule]):
         self.permCheckers = perm_checkers
 
-    def test(self) -> List[CheckStatus]:
+    def test(self, fixer: PermFixer = None) -> List[CheckStatus]:
         results = []
         for path, checker in self.permCheckers.items():
-            results.extend(checker.test(path))
+            results.extend(checker.test(path, fixer=fixer))
         return results
