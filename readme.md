@@ -9,6 +9,11 @@ ownership related issues are quite common, yet they're tedious to debug. This to
 You define list of expected permissions and ownership once, then run the script which reports on any found
 issues. The tool can also fix the permissions and ownership for you (check the advanced example)
 
+In nutshell this tool can:
+- test permissions / ownership (user and group) of directory structure,
+- fix any inconsistencies of permissions / ownership (you must be able to perform `chmod` and/or `chown`),
+- has dry mode  
+
 ## Examples of use case
 - configuration files stored in git repo. When you do `git pull` or `git checkout file.conf` ownership and
   permissions might change. Also, `git clone` probably doesn't result in the right ownership / permissions.  
@@ -77,7 +82,7 @@ tester = PermRuleGroup({
 
 perm_fixer = None
 if True:
-    perm_fixer = PermFixer()
+    perm_fixer = PermFixer(dry_mode=True)
 
 results = tester.test(fixer=perm_fixer)
 for result in results:
@@ -100,7 +105,6 @@ for result in results:
 - support for rules like `ug+rwX,o+r-wx`
 - wildcard support in paths (e.g. apply the `PermRule` to `*.pem` files),
 - relative paths in overrides,
-- add dry mode fixer,
 - switch to using `yield` to preserve memory,
 - define rules in yml / text files,
 - docker support (e.g. "user www-data from container php can write to /var/run/mysqld/mysqld.sock"),
