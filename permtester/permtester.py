@@ -108,8 +108,8 @@ class Perm:
         path_stat = os.stat(path)
 
         new_perms = self._overlay_onto_unit(self.user, path_stat.st_mode, libstat.S_IRUSR, libstat.S_IWUSR, libstat.S_IXUSR) \
-            | self._overlay_onto_unit(self.group, path_stat.st_mode, libstat.S_IRGRP, libstat.S_IWGRP, libstat.S_IXGRP) \
-            | self._overlay_onto_unit(self.others, path_stat.st_mode, libstat.S_IROTH, libstat.S_IWOTH, libstat.S_IXOTH)
+                    | self._overlay_onto_unit(self.group, path_stat.st_mode, libstat.S_IRGRP, libstat.S_IWGRP, libstat.S_IXGRP) \
+                    | self._overlay_onto_unit(self.others, path_stat.st_mode, libstat.S_IROTH, libstat.S_IWOTH, libstat.S_IXOTH)
 
         return new_perms
 
