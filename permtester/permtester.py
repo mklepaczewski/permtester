@@ -67,10 +67,9 @@ class Perm:
 
     @staticmethod
     def from_string(mode: str):
-        (userPerms, grouPerms, othersPerms) = wrap(mode, 3)
-        user = UnitPerm(userPerms[0], userPerms[1], userPerms[2])
-        group = UnitPerm(grouPerms[0], grouPerms[1], grouPerms[2])
-        others = UnitPerm(othersPerms[0], othersPerms[1], othersPerms[2])
+        user = UnitPerm(mode[0], mode[1], mode[2])
+        group = UnitPerm(mode[3], mode[4], mode[5])
+        others = UnitPerm(mode[6], mode[7], mode[8])
         return Perm(user, group, others)
 
     def test(self, perm, path: str) -> bool:
