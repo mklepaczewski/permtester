@@ -77,78 +77,39 @@ class Perm:
                and self.group.test(perm.group, path) \
                and self.others.test(perm.others, path)
 
-    def overlay_onto(self, path:  str) -> int:
-        path_stat = os.stat(path)
+    def _overlay_onto_unit(selfs, perm_unit: UnitPerm, st_mode: int, read_bits: int, write_bits: int, execute_bits: int) -> int:
         new_perms = 0
 
-        # user
-        if self.user.read == "r":
-            new_perms = new_perms | libstat.S_IRUSR
-        elif self.user.read == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IRUSR)
+        if perm_unit.read == "r":
+            new_perms = new_perms | read_bits
+        elif perm_unit.read == "?":
+            new_perms = new_perms | (st_mode & read_bits)
 
-        if self.user.write == "w":
-            new_perms = new_perms | libstat.S_IWUSR
-        elif self.user.write == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IWUSR)
+        if perm_unit.write == "w":
+            new_perms = new_perms | write_bits
+        elif perm_unit.write == "?":
+            new_perms = new_perms | (st_mode & write_bits)
 
-        if self.user.execute == "x":
-            new_perms = new_perms | libstat.S_IXUSR
-        elif self.user.execute == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IXUSR)
-        elif self.user.execute == "X":
+        if perm_unit.execute == "x":
+            new_perms = new_perms | execute_bits
+        elif perm_unit.execute == "?":
+            new_perms = new_perms | (st_mode & execute_bits)
+        elif perm_unit.execute == "X":
             # with X - if path is a file then copy whatever we have
             # if it's a dir - mark it as executable
-            if libstat.S_ISDIR(path_stat.st_mode):
-                new_perms = new_perms | libstat.S_IXUSR
+            if libstat.S_ISDIR(st_mode):
+                new_perms = new_perms | execute_bits
             else:
-                new_perms = new_perms | (path_stat.st_mode & libstat.S_IXUSR)
+                new_perms = new_perms | (st_mode & execute_bits)
 
-        # group
-        if self.group.read == "r":
-            new_perms = new_perms | libstat.S_IRGRP
-        elif self.group.read == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IRGRP)
+        return new_perms
 
-        if self.group.write == "w":
-            new_perms = new_perms | libstat.S_IWGRP
-        elif self.group.write == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IWGRP)
+    def overlay_onto(self, path:  str) -> int:
+        path_stat = os.stat(path)
 
-        if self.group.execute == "x":
-            new_perms = new_perms | libstat.S_IXGRP
-        elif self.group.execute == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IXGRP)
-        elif self.group.execute == "X":
-            # with X - if path is a file then copy whatever we have
-            # if it's a dir - mark it as executable
-            if libstat.S_ISDIR(path_stat.st_mode):
-                new_perms = new_perms | libstat.S_IXGRP
-            else:
-                new_perms = new_perms | (path_stat.st_mode & libstat.S_IXGRP)
-
-        # others
-        if self.others.read == "r":
-            new_perms = new_perms | libstat.S_IROTH
-        elif self.others.read == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IROTH)
-
-        if self.others.write == "w":
-            new_perms = new_perms | libstat.S_IWOTH
-        elif self.others.write == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IWOTH)
-
-        if self.others.execute == "x":
-            new_perms = new_perms | libstat.S_IXOTH
-        elif self.others.execute == "?":
-            new_perms = new_perms | (path_stat.st_mode & libstat.S_IXOTH)
-        elif self.others.execute == "X":
-            # with X - if path is a file then copy whatever we have
-            # if it's a dir - mark it as executable
-            if libstat.S_ISDIR(path_stat.st_mode):
-                new_perms = new_perms | libstat.S_IXOTH
-            else:
-                new_perms = new_perms | (path_stat.st_mode & libstat.S_IXOTH)
+        new_perms = self._overlay_onto_unit(self.user, path_stat.st_mode, libstat.S_IRUSR, libstat.S_IWUSR, libstat.S_IXUSR) \
+            | self._overlay_onto_unit(self.group, path_stat.st_mode, libstat.S_IRGRP, libstat.S_IWGRP, libstat.S_IXGRP) \
+            | self._overlay_onto_unit(self.others, path_stat.st_mode, libstat.S_IROTH, libstat.S_IWOTH, libstat.S_IXOTH)
 
         return new_perms
 
