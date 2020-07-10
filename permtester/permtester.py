@@ -215,6 +215,14 @@ class PermRule:
         return results
 
 
+class SkipRule(PermRule):
+    def __init__(self):
+        pass
+
+    def test(self, path: str, fixer: PermFixer = None) -> List[CheckStatus]:
+        return [ CheckStatus(path, "WARN", "Skipped") ]
+
+
 class PermRuleGroup:
     def __init__(self, perm_checkers: Dict[str, PermRule]):
         self.permCheckers = perm_checkers
