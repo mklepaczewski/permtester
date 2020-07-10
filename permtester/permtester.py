@@ -169,7 +169,7 @@ class PermRule:
         results = []
 
         if self.has_override(path):
-            return self.get_override(path).test(path)
+            return self.get_override(path).test(path, fixer=fixer)
 
         if not os.path.exists(path):
             if not self.mustExist:
