@@ -150,12 +150,20 @@ class PermRule:
         self.perms = perms
         self.recursive = recursive
         self.mustExist = must_exist
-        self.overrides = overrides if overrides is not None else {}
+        self.overrides = {}
+        overrides = overrides if overrides is not None else {}
 
         # Directories in overrides are currently unsupported
-        for p in self.overrides.keys():
-            if os.path.isdir(p):
-                raise Exception("Directories in overrides are not supported")
+        # normalize paths in case we have a directory path and it ends with "/"
+
+        for p in overrides.keys():
+            value = overrides[p]
+            if p.endswith("/"):
+                original_p = p
+                p = p.rstrip("/")
+                if p in overrides:
+                    raise Exception(f"Duplicate rules - one '{original_p}' and '{p}'")
+            self.overrides[p] = value
 
     def has_override(self, path: str) -> bool:
         return self.get_override(path) is not None
@@ -167,6 +175,10 @@ class PermRule:
     def test(self, path: str, fixer: PermFixer = None) -> List[CheckStatus]:
 
         results = []
+
+        # normalize path - we expect directories to not end with "/"
+        if path.endswith("/"):
+            path = path.rstrip("/")
 
         if self.has_override(path):
             return self.get_override(path).test(path, fixer=fixer)
