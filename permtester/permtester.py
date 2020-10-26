@@ -145,9 +145,7 @@ class PermFixer:
 
 class PermRule:
     def __init__(self, uid: int, gid: int, perms: Perm, recursive: bool = True, must_exist: bool = True, overrides: Dict = None):
-        self.uid = uid
-        self.gid = gid
-        self.perms = perms
+        self.policy = Policy("", uid, gid, perms)
         self.recursive = recursive
         self.mustExist = must_exist
         self.overrides = {}
@@ -195,28 +193,28 @@ class PermRule:
         stat = os.stat(path)
 
         fix_uid_gid = False
-        if stat.st_uid != self.uid:
-            results.append(CheckStatus(path, "ERROR", f"Expected UID = {self.uid}, got {stat.st_uid}"))
+        if stat.st_uid != self.policy.uid:
+            results.append(CheckStatus(path, "ERROR", f"Expected UID = {self.policy.uid}, got {stat.st_uid}"))
             fix_uid_gid = True
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {self.uid}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {self.policy.uid}"))
 
-        if stat.st_gid != self.gid:
-            results.append(CheckStatus(path, "ERROR", f"Expected GID = {self.gid}, got {stat.st_gid}"))
+        if stat.st_gid != self.policy.gid:
+            results.append(CheckStatus(path, "ERROR", f"Expected GID = {self.policy.gid}, got {stat.st_gid}"))
             fix_uid_gid = True
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {self.gid}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {self.policy.gid}"))
 
         if fixer and fix_uid_gid:
-            results.append(fixer.fix_uid_gid(path, self.uid, self.gid))
+            results.append(fixer.fix_uid_gid(path, self.policy.uid, self.policy.gid))
 
         path_perms = Perm.from_stat(stat)
-        if not self.perms.test(path_perms, path):
-            results.append(CheckStatus(path, "ERROR", f"Expected perms = {self.perms}, got {path_perms}"))
+        if not self.policy.permissions.test(path_perms, path):
+            results.append(CheckStatus(path, "ERROR", f"Expected perms = {self.policy.permissions}, got {path_perms}"))
             if fixer:
-                results.append(fixer.fix_perms(path, self.perms))
+                results.append(fixer.fix_perms(path, self.policy.permissions))
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {self.perms}, git {path_perms}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {self.policy.permissions}, git {path_perms}"))
 
         if self.recursive and os.path.isdir(path):
             with os.scandir(path) as it:
@@ -244,3 +242,10 @@ class PermRuleGroup:
         for path, checker in self.permCheckers.items():
             results.extend(checker.test(path, fixer=fixer))
         return results
+
+class Policy:
+    def __init__(self, id: str, uid: int, gid: int, permissions: Perm):
+        self.id = id
+        self.permissions = permissions
+        self.uid = uid
+        self.gid = gid
