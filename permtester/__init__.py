@@ -1,4 +1,4 @@
-from .permtester import PermRule, Perm, PermRuleGroup, CheckStatus, PermFixer, SkipRule
+from .permtester import PermRule, Perm, PermRuleGroup, CheckStatus, PermFixer, SkipRule, JsonRuleReader, Policy
 
 __all__ = [
     'PermRule',
@@ -6,6 +6,8 @@ __all__ = [
     'Perm',
     'CheckStatus',
     'PermFixer',
-    'SkipRule'
+    'SkipRule',
+    'JsonRuleReader',
+    'Policy'
     # Skip PermUnit
 ]

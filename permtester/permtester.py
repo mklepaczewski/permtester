@@ -2,6 +2,8 @@ import os
 import stat as libstat
 from textwrap import wrap
 from typing import List, Dict
+import json
+import copy
 
 
 class CheckStatus:
@@ -253,6 +255,7 @@ class SkipRule(PermRule):
 
 
 class PermRuleGroup:
+
     def __init__(self, perm_checkers: Dict[str, PermRule]):
         self.permCheckers = perm_checkers
 
@@ -262,3 +265,138 @@ class PermRuleGroup:
             results.extend(checker.test(path, fixer=fixer))
         return results
 
+
+class Config:
+    def __init__(self, policies: Dict[str, Policy], rules: PermRuleGroup):
+        self.policies = policies
+        self.rules = rules
+
+
+class JsonRuleReader:
+    def __init__(self, path: str):
+        self.path = path
+
+        self.rule_stack = []
+        self.policies = {}
+
+    def get_rules(self) -> Config:
+        # Make sure the file exists
+        if not os.path.exists(self.path):
+            raise IOError("File doesn't exist: " + self.path)
+        pass
+
+        data = None
+
+        # Read the JSON file
+        with open(self.path, 'r') as file:
+            data = file.read()
+
+        decoded = json.loads(data)
+
+        self.policies = self._parse_policies(decoded['policies'])
+        rules = self._parse_rules(decoded['rules'])
+        
+        result = Config(self.policies, rules)
+
+        return result
+
+    def _parse_policies(self, policies: Dict) -> Dict[str, Policy]:
+        results = {}
+        for policy_id in policies:
+            results[policy_id] = Policy(policy_id, policies[policy_id]["uid"], policies[policy_id]["gid"], Perm.from_string(policies[policy_id]["permissions"]))
+        return results
+
+    def _parse_rules(self, rules: Dict) -> PermRuleGroup:
+        parsed_rules = {}
+        for rule_id in rules:
+            rule = self._parse_rule(rule_id, rules[rule_id])
+            parsed_rules[rule.path] = rule
+
+        return PermRuleGroup(parsed_rules)
+
+    def _get_policy(self, id: str) -> Policy:
+        if id not in self.policies:
+            raise ValueError("No such policy: " + id)
+        return self.policies[id]
+
+    def _parse_rule(self, rule_id: str, rule_dict: Dict) -> PermRule:
+        # We inherit everything from parent, and change what is specified. But we don't inherit overrides
+        policy = None
+        recursive = None
+        mustExist = None
+        path = None
+        overrides = None
+
+        # for policy construction in case we don't inherit it
+        uid = None
+        gid = None
+        permissions = None
+
+        self_uid = None
+        self_gid = None
+        self_permissions = None
+
+        if len(self.rule_stack):
+            policy = copy.copy(self.rule_stack[-1].policy)
+            recursive = self.rule_stack[-1].recursive
+            mustExist = self.rule_stack[-1].mustExist
+            path = self.rule_stack[-1].path
+
+        for key in rule_dict:
+            if key == "path":
+                # Is it absolute or parent-relative path?
+                if rule_dict[key][0] != "/":
+                    # Assure we have a parent
+                    if len(self.rule_stack) == 0:
+                        raise ValueError("Tried to create parent-relative path but there's no parent: " + str(rule_dict[key]))
+                    path = self.rule_stack[-1].path + rule_dict[key]
+                else:
+                    path = rule_dict[key]
+            elif key == "recursive":
+                recursive = rule_dict[key]
+            elif key == "policy":
+                policy = self._get_policy(rule_dict[key])
+            elif key == "uid":
+                uid = rule_dict[key]
+            elif key == "gid":
+                gid = rule_dict[key]
+            elif key == "permissions":
+                permissions = rule_dict[key]
+            elif key == "self-uid":
+                self_uid = rule_dict[key]
+            elif key == "self-gid":
+                self_gid = rule_dict[key]
+            elif key == "self-permissions":
+                self_permissions = rule_dict[key]
+            elif key == "overrides":
+                # We need to have current rule constructed to allow overrides to inherit from it. For that reason we're
+                # going to process overrides later
+                pass
+            else:
+                print("Ignoring key: " + key)
+
+        if not policy:
+            policy = Policy("runtime", uid, gid, permissions)
+        else:
+            # Allow for overrides of the policy
+            if uid is not None:
+                policy.uid = uid
+                policy.id = "runtime"
+
+            if gid is not None:
+                policy.gid = gid
+                policy.id = "runtime"
+
+            if permissions is not None:
+                policy.permissions = Perm.from_string(permissions)
+                policy.id = "runtime"
+
+        result = PermRule(path, policy, recursive, mustExist, overrides)
+
+        if "overrides" in rule_dict:
+            self.rule_stack.append(result)
+            overrides = self._parse_rules(rule_dict["overrides"])
+            self.rule_stack.pop()
+            result.overrides = overrides
+
+        return result

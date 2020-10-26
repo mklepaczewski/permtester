@@ -1,9 +1,15 @@
+import pydevd_pycharm
+pydevd_pycharm.settrace('192.168.1.2', port=12345, stdoutToServer=True, stderrToServer=True, suspend=False)
+
 import unittest
 import tempfile
 import sys
 import os
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/..")
 from permtester import Perm
+from permtester import JsonRuleReader
+from permtester import Policy
 
 
 class TestPerm(unittest.TestCase):
@@ -102,6 +108,53 @@ class TestPerm(unittest.TestCase):
             result = perm.overlay_onto(path)
             self.assertEqual(expected_changes, result, f"Expected changes: {oct(expected_changes)}, got {oct(result)}")
 
+class TestJsonRuleReader(unittest.TestCase):
+    def test_json_rule(self):
+        rule_reader = JsonRuleReader("rules.json")
+        rule_reader.get_rules()
+        self.assertTrue(True)
+
+    def test_parse_policies(self):
+        test_cases = {
+            'first':
+                {
+                    'input': {
+                        'www-readable': {
+                            'uid': 33,
+                            'gid': 33,
+                            'permissions': 'rwxr-x--x'
+                        }
+                    },
+                    'expected': {
+                        "www-readable": Policy("www-readable", 33, 33, Perm.from_string("rwxr-x--x"))
+                    }
+                },
+            'second':
+                {
+                    'input': {
+                        'www-readable': {
+                            'uid': 33,
+                            'gid': 33,
+                            'permissions': 'rwxr-x--x'
+                        },
+                        'main-mysql': {
+                            'uid': 0,
+                            'gid': 100,
+                            'permissions': 'rwx------'
+                        }
+                    },
+                    'expected': {
+                        "www-readable": Policy("www-readable", 33, 33, Perm.from_string("rwxr-x--x")),
+                        "main-mysql": Policy("main-mysql", 0, 100, Perm.from_string("rwx------"))
+                    }
+                },
+        }
+
+        rule_reader = JsonRuleReader("rules.json")
+        for test_id in test_cases:
+            raw_data = test_cases[test_id]['input']
+            result = rule_reader._parse_policies(raw_data)
+            self.assertDictEqual(result, test_cases[test_id]['expected'])
 
 if __name__ == '__main__':
     unittest.main()
