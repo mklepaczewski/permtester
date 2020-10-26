@@ -148,10 +148,23 @@ class PermFixer:
         except OSError as err:
             return CheckStatus(path, "ERROR", err.strerror)
 
+class Policy:
+    def __init__(self, id: str, uid: int, gid: int, permissions: Perm):
+        self.id = id
+        self.permissions = permissions
+        self.uid = uid
+        self.gid = gid
+
+    def __eq__(self, other):
+        return self.id == other.id and self.permissions == other.permissions and self.uid == other.uid and self.gid == other.gid
+
+    def __repr__(self):
+        return f"[id={self.id}, uid={self.uid}, gid={self.gid}, permissions={self.permissions}]"
 
 class PermRule:
-    def __init__(self, uid: int, gid: int, perms: Perm, recursive: bool = True, must_exist: bool = True, overrides: Dict = None):
-        self.policy = Policy("", uid, gid, perms)
+    def __init__(self, path: str, policy: Policy, recursive: bool = True, must_exist: bool = True, overrides: Dict = None):
+        self.path = path
+        self.policy = policy
         self.recursive = recursive
         self.mustExist = must_exist
         self.overrides = {}
@@ -249,9 +262,3 @@ class PermRuleGroup:
             results.extend(checker.test(path, fixer=fixer))
         return results
 
-class Policy:
-    def __init__(self, id: str, uid: int, gid: int, permissions: Perm):
-        self.id = id
-        self.permissions = permissions
-        self.uid = uid
-        self.gid = gid
