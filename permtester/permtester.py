@@ -36,6 +36,9 @@ class UnitPerm:
 
         return read and write and execute
 
+    def __eq__(self, other):
+        return self.read == other.read and self.write == other.write and self.execute == other.execute
+
     def __repr__(self):
         return self.read + self.write + self.execute
 
@@ -112,6 +115,9 @@ class Perm:
                     | self._overlay_onto_unit(self.others, path_stat.st_mode, libstat.S_IROTH, libstat.S_IWOTH, libstat.S_IXOTH)
 
         return new_perms
+
+    def __eq__(self, other):
+        return self.user == other.user and self.group == other.group and self.others == other.others
 
     def __repr__(self):
         return f"[u:{str(self.user)} g:{str(self.group)} o:{str(self.others)}]"
