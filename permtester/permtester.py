@@ -150,6 +150,7 @@ class PermFixer:
         except OSError as err:
             return CheckStatus(path, "ERROR", err.strerror)
 
+
 class Policy:
     def __init__(self, id: str, uid: int, gid: int, permissions: Perm):
         self.id = id
@@ -162,6 +163,7 @@ class Policy:
 
     def __repr__(self):
         return f"[id={self.id}, uid={self.uid}, gid={self.gid}, permissions={self.permissions}]"
+
 
 class PermRule:
     def __init__(self, path: str, policy: Policy, recursive: bool = True, must_exist: bool = True, overrides = None):
@@ -191,6 +193,7 @@ class PermRule:
         if path in self.overrides.permCheckers:
             return self.overrides.permCheckers[path]
 
+
 class SkipRule(PermRule):
     def __init__(self):
         pass
@@ -202,6 +205,7 @@ class SkipRule(PermRule):
 class PermRuleGroup:
     def __init__(self, perm_checkers: Dict[str, PermRule]):
         self.permCheckers = perm_checkers
+
 
 class Config:
     def __init__(self, policies: Dict[str, Policy], rules: PermRuleGroup):
@@ -337,6 +341,7 @@ class JsonRuleReader:
             result.overrides = overrides
 
         return result
+
 
 class PermissionChecker:
     def __init__(self):
