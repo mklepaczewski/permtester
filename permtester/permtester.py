@@ -376,7 +376,7 @@ class JsonRuleReader:
                 print("Ignoring key: " + key)
 
         if not policy:
-            policy = Policy("runtime", uid, gid, permissions)
+            policy = Policy("runtime", uid, gid, Perm.from_string(permissions))
         else:
             # Allow for overrides of the policy
             if uid is not None:
