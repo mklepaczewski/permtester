@@ -25,69 +25,79 @@ This is not guaranteed to work, as the code may change too quickly to keep them 
 should give you an idea of how to use the package.
 
 ## Basic example
-```python
-from permtester import PermRule, Perm
-
-SYS_UID_ROOT = 0
-SYS_GID_ROOT = 0
-tester = PermRule(
-    SYS_UID_ROOT,
-    SYS_GID_ROOT,
-    Perm.from_string("rwXr-Xr-X"),
-)
-
-results = tester.test("/var/www/html/example.com/")
-for result in results:
-    if result.status != "SUCCESS":
-        print(result)
+```bash
+python3 -m permtester -r rules.json
 ```
-## Advanced - with different rules for some child files
-```python
-from permtester import *
+Sample json - check `rules.sample.json`. 
+```json
+{
+  "policies": {
+    "web-readable": {
+      "uid": 33,
+      "gid": 33,
+      "permissions": "rwXrwX---"
+    },
+    "mysql-certs-private": {
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rw-------"
+    },
 
-MYSQL_DATA_DIR="/var/lib/mysql/"
-MYSQL_UID_MYSQL = 102
-MYSQL_GID_MYSQL = 103
+    "mysql-certs-public": {
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rw-r--r--"
+    }
+  },
+  "rules": {
+    "web-dir": {
+      "path": "/var/www/example.com",
+      "policy": "web-readable",
+      ""
+    },
+    "mysql-data": {
+      "path": "/opt/tapeso-app/containers_data/var/lib/mysql/",
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rwXr-X---",
+      "overrides": {
+        "certs-private-1": {
+          "path": "ca-key.pem",
+          "policy": "mysql-certs-private"
+        },
+        "certs-private-2": {
+          "path": "client-key.pem",
+          "policy": "mysql-certs-private"
+        },
+        "certs-private-3": {
+          "path": "private_key.pem",
+          "policy": "mysql-certs-private"
+        },
+        "certs-private-4": {
+          "path": "server-key.pem",
+          "policy": "mysql-certs-private"
+        },
 
-PERM_CHECKER_MYSQL_CERTS_PRIVATE=PermRule(
-    MYSQL_UID_MYSQL,
-    MYSQL_GID_MYSQL,
-    Perm.from_string("rw-------")
-)
-
-PERM_CHECKER_MYSQL_CERTS_PUBLIC=PermRule(
-    MYSQL_UID_MYSQL,
-    MYSQL_GID_MYSQL,
-    Perm.from_string("rw-r--r--")
-)
-
-tester = PermRuleGroup({
-    MYSQL_DATA_DIR: PermRule(
-        MYSQL_UID_MYSQL,
-        MYSQL_GID_MYSQL,
-        Perm.from_string("rwXr-X---"),
-        overrides={
-            MYSQL_DATA_DIR + "ca-key.pem": PERM_CHECKER_MYSQL_CERTS_PRIVATE,
-            MYSQL_DATA_DIR + "client-key.pem": PERM_CHECKER_MYSQL_CERTS_PRIVATE,
-            MYSQL_DATA_DIR + "private_key.pem": PERM_CHECKER_MYSQL_CERTS_PRIVATE,
-            MYSQL_DATA_DIR + "server-key.pem": PERM_CHECKER_MYSQL_CERTS_PRIVATE,
-
-            MYSQL_DATA_DIR + "ca.pem": PERM_CHECKER_MYSQL_CERTS_PUBLIC,
-            MYSQL_DATA_DIR + "client-cert.pem": PERM_CHECKER_MYSQL_CERTS_PUBLIC,
-            MYSQL_DATA_DIR + "public_key.pem": PERM_CHECKER_MYSQL_CERTS_PUBLIC,
-            MYSQL_DATA_DIR + "server-cert.pem": PERM_CHECKER_MYSQL_CERTS_PUBLIC,
+        "certs-public-1": {
+          "path": "ca.pem",
+          "policy": "mysql-certs-public"
+        },
+        "certs-public-2": {
+          "path": "client-cert.pem",
+          "policy": "mysql-certs-public"
+        },
+        "certs-public-3": {
+          "path": "public_key.pem",
+          "policy": "mysql-certs-public"
+        },
+        "certs-public-4": {
+          "path": "server-cert.pem",
+          "policy": "mysql-certs-public"
         }
-    )
-})
-
-perm_fixer = None
-if True:
-    perm_fixer = PermFixer(dry_mode=True)
-
-results = tester.test(fixer=perm_fixer)
-for result in results:
-    if result.status != "SUCCESS":
-        print(result)
+      }
+    }
+  }
+}
 ```
 
 # Rule definitions
@@ -101,11 +111,11 @@ for result in results:
   write permission
 
 # Future improvements
-- add support for `setuid, setgid, sticky bit`
-- support for rules like `ug+rwX,o+r-wx`
-- wildcard support in paths (e.g. apply the `PermRule` to `*.pem` files),
-- relative paths in overrides,
-- switch to using `yield` to preserve memory,
-- define rules in yml / text files,
-- docker support (e.g. "user www-data from container php can write to /var/run/mysqld/mysqld.sock"),
-- make code more pythonic
+- [ ] add support for `setuid, setgid, sticky bit`
+- [ ] support for rules like `ug+rwX,o+r-wx`
+- [ ] wildcard support in paths (e.g. apply the `PermRule` to `*.pem` files),
+- [X] relative paths in overrides,
+- [ ] switch to using `yield` to preserve memory,
+- [X] define rules in yml / text files (done using JSON)
+- [ ] docker support (e.g. "user www-data from container php can write to /var/run/mysqld/mysqld.sock"),
+- [ ] make code more pythonic

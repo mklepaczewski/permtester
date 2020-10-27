@@ -1,0 +1,68 @@
+{
+  "policies": {
+    "web-readable": {
+      "uid": 33,
+      "gid": 33,
+      "permissions": "rwXrwX---"
+    },
+    "mysql-certs-private": {
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rw-------"
+    },
+
+    "mysql-certs-public": {
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rw-r--r--"
+    }
+  },
+  "rules": {
+    "web-dir": {
+      "path": "/var/www/example.com",
+      "policy": "web-readable",
+      ""
+    },
+    "mysql-data": {
+      "path": "/opt/tapeso-app/containers_data/var/lib/mysql/",
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rwXr-X---",
+      "overrides": {
+        "certs-private-1": {
+          "path": "ca-key.pem",
+          "policy": "mysql-certs-private"
+        },
+        "certs-private-2": {
+          "path": "client-key.pem",
+          "policy": "mysql-certs-private"
+        },
+        "certs-private-3": {
+          "path": "private_key.pem",
+          "policy": "mysql-certs-private"
+        },
+        "certs-private-4": {
+          "path": "server-key.pem",
+          "policy": "mysql-certs-private"
+        },
+
+        "certs-public-1": {
+          "path": "ca.pem",
+          "policy": "mysql-certs-public"
+        },
+        "certs-public-2": {
+          "path": "client-cert.pem",
+          "policy": "mysql-certs-public"
+        },
+        "certs-public-3": {
+          "path": "public_key.pem",
+          "policy": "mysql-certs-public"
+        },
+        "certs-public-4": {
+          "path": "server-cert.pem",
+          "policy": "mysql-certs-public"
+        }
+      }
+    }
+  }
+}
