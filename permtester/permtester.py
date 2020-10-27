@@ -291,7 +291,25 @@ class JsonRuleReader:
                     # Assure we have a parent
                     if len(self.rule_stack) == 0:
                         raise ValueError("Tried to create parent-relative path but there's no parent: " + str(rule_dict[key]))
-                    path = self.rule_stack[-1].path + rule_dict[key]
+                    parent_path =  self.rule_stack[-1].path
+                    # Make sure parent path ends with "/" as we have a relative path and we'll be appending to it
+                    if parent_path[-1] != "/":
+                        parent_path = parent_path + "/"
+
+                    relative_path = rule_dict[key]
+
+                    if len(relative_path) == 1:
+                        # Handle "."
+                        if relative_path[0] == ".":
+                            path = parent_path
+                        else:
+                            path = parent_path + rule_dict[key]
+                    elif relative_path[0:2] == "./":
+                        path = parent_path + relative_path[2:]
+                    else:
+                        path = parent_path + relative_path
+
+                    print("Parsed path: " + path)
                 else:
                     path = rule_dict[key]
             elif key == "recursive":
