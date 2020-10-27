@@ -322,8 +322,8 @@ class JsonRuleReader:
     def _parse_rule(self, rule_id: str, rule_dict: Dict) -> PermRule:
         # We inherit everything from parent, and change what is specified. But we don't inherit overrides
         policy = None
-        recursive = None
-        mustExist = None
+        recursive = True
+        mustExist = True
         path = None
         overrides = None
 
