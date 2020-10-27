@@ -1,3 +1,4 @@
+import argparse
 import os
 import stat as libstat
 from argparse import ArgumentParser
@@ -345,7 +346,7 @@ class JsonRuleReader:
 
 class PermissionChecker:
     def __init__(self):
-        parser = ArgumentParser()
+        parser = ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         parser.add_argument(
             "-d",
             "--dry-mode",
@@ -372,8 +373,16 @@ class PermissionChecker:
         parser.add_argument(
             "-r",
             "--rules",
-            help="Rules files",
+            help="Rules file",
             default="rules.json"
+        )
+
+        parser.add_argument(
+            "-v",
+            "--verbose",
+            help="Verbose, reports successful checks",
+            default=False,
+            action='store_true'
         )
 
         self.options = parser.parse_args()
@@ -456,8 +465,7 @@ class PermissionChecker:
         for result in results:
             if result.status != "SUCCESS":
                 print(result)
-            else:
-                # pass
+            elif self.options.verbose:
                 print(result)
 
 
