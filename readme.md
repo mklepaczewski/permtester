@@ -52,8 +52,7 @@ Sample json - check `rules.sample.json`.
   "rules": {
     "web-dir": {
       "path": "/var/www/example.com",
-      "policy": "web-readable",
-      ""
+      "policy": "web-readable"
     },
     "mysql-data": {
       "path": "/opt/tapeso-app/containers_data/var/lib/mysql/",
@@ -96,6 +95,121 @@ Sample json - check `rules.sample.json`.
         }
       }
     }
+  }
+}
+```
+
+Format:
+```json
+{
+  "policies": {},
+  "rules": {}
+}
+```
+
+`policies` is a set of reusable `uid`, `gid` and permissions (e.g. `rwxr-x---`). You refer to it in `rules` by refering
+to their id:
+```json
+{
+  "policies": {
+    "web-readable": {
+      "uid": 33,
+      "gid": 33,
+      "permissions": "rwXrwX---"
+    },
+    "mysql-certs-private": {
+      "uid": 102,
+      "gid": 103,
+      "permissions": "rw-------"
+    }
+  },
+  "rules":  {
+    "example-rule": {
+      "path": "/var/www/",
+      "policy": "web-readable"    
+    }  
+  }
+}
+```
+
+You can refer to a policy in `rules` section and override it with custom `uid`,`gid` or `permissions`:
+```json
+{
+  "policies": {
+    "web-readable": {
+      "uid": 33,
+      "gid": 33,
+      "permissions": "rwXrwX---"
+    }
+  },
+  "rules":  {
+    "example-rule": {
+      "path": "/var/www/",
+      "policy": "web-readable",
+      "uid": 1000    
+    }  
+  }
+}
+```
+
+Rule format:
+```json
+{
+  "rules": {
+    "my-rule-id": {
+      "path": "/home/jack/project/",
+      "recursive": true,
+      "mustExist": true,
+      "permissions": "rwXrwX---",
+      "policy": "policy-id",
+      "overrides": {}    
+    }  
+  }
+}
+```
+In each rule must have:
+- specify `path`,
+- use either `policy` or `uid`,`gid` and `permissions`
+- other fields are optional:
+    - `recursive` is `true` by default,
+    - `mustExist` is `true` by default,
+    
+`permissions` field:
+- **must** be in format `rwxrwxrwx` - owner-group-others
+- you may use `?` to accept any permission, e.g. `r?-r-----` would mean that an entry must be:
+    - readable by owner, may be writable (or not), must not be executable,
+    - readable by group, not writable by group, not executable by group,
+    - not readable, writable nor executable by others
+
+If some files in a directory handled in `rules` have different permissions you can specify it in `overrides` section of
+each rule. Members of `overrides` sections:
+ - are the same objects as members of `rules` section.
+ - these rules may have their own `overrides`.
+ - child rules in `overrides` inherit settings from their parents, you don't have to specify all their values,
+ - `path` is required
+ - `path` may be either an absolute path or a relative path. Relative paths can start with './' or not. './readme.md'
+   and 'readme.md' point to the same file. 
+
+```json
+{
+  "policies": {
+    "web-readable": {
+      "uid": 33,
+      "gid": 33,
+      "permissions": "rwXrwX---"
+    }
+  },
+  "rules":  {
+    "example-rule": {
+      "path": "/var/www/",
+      "policy": "web-readable",
+      "overrides": {
+        "git": {
+          "path": ".git/",
+          "permissions": "---------"        
+        }
+      } 
+    }  
   }
 }
 ```

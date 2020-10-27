@@ -21,7 +21,6 @@
     "web-dir": {
       "path": "/var/www/example.com",
       "policy": "web-readable",
-      ""
     },
     "mysql-data": {
       "path": "/opt/tapeso-app/containers_data/var/lib/mysql/",
@@ -30,7 +29,7 @@
       "permissions": "rwXr-X---",
       "overrides": {
         "certs-private-1": {
-          "path": "ca-key.pem",
+          "path": "./ca-key.pem",
           "policy": "mysql-certs-private"
         },
         "certs-private-2": {
