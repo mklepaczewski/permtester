@@ -209,9 +209,10 @@ class PermRuleGroup:
 
 
 class Config:
-    def __init__(self, policies: Dict[str, Policy], rules: PermRuleGroup):
+    def __init__(self, policies: Dict[str, Policy], rules: PermRuleGroup, base_path: str):
         self.policies = policies
         self.rules = rules
+        self.base_path = base_path
 
 
 class JsonRuleReader:
@@ -235,10 +236,18 @@ class JsonRuleReader:
 
         decoded = json.loads(data)
 
-        self.policies = self._parse_policies(decoded['policies'])
-        rules = self._parse_rules(decoded['rules'])
+        # base path
+        self.base_path = decoded['path'] if 'path' in decoded else None
+
+        if 'policies' in decoded:
+            self.policies = self._parse_policies(decoded['policies'])
+
+        if 'rules' in decoded:
+            rules = self._parse_rules(decoded['rules'])
+        else:
+            rules = PermRuleGroup({})
         
-        result = Config(self.policies, rules)
+        result = Config(self.policies, rules, self.base_path)
 
         return result
 
@@ -252,6 +261,8 @@ class JsonRuleReader:
         parsed_rules = {}
         for rule_id in rules:
             rule = self._parse_rule(rule_id, rules[rule_id])
+            if rule.path is None:
+                raise ValueError("Malformed config format - rule " + rule_id + " is without required 'path'")
             parsed_rules[rule.path] = rule
 
         return PermRuleGroup(parsed_rules)
@@ -261,18 +272,21 @@ class JsonRuleReader:
             raise ValueError("No such policy: " + id)
         return self.policies[id]
 
-    def _construct_path(self, the_path: str, base_path: str) -> str:
+    def _construct_path(self, the_path: str, parent_path: str) -> str:
         if the_path[0] == "/":
             # This is an absolute path
             return the_path
 
         # We have a relative path, make sure we also have a base_path
-        if base_path is None:
-            raise ValueError("Tried to create parent-relative path but there's no parent path: " + the_path)
+        if parent_path is None:
+            if self.base_path is not None:
+                parent_path = self.base_path
+            else:
+                raise ValueError("Tried to create parent-relative path but there's no parent path: " + the_path)
 
         # Make sure parent path ends with "/" as we have a relative path and we'll be appending to it
-        if base_path[-1] != "/":
-            base_path = base_path + "/"
+        if parent_path[-1] != "/":
+            parent_path = parent_path + "/"
 
         relative_path = the_path
         result = None
@@ -280,13 +294,13 @@ class JsonRuleReader:
         if len(relative_path) == 1:
             # Handle "."
             if relative_path[0] == ".":
-                result = base_path
+                result = parent_path
             else:
-                result = base_path + the_path
+                result = parent_path + the_path
         elif relative_path[0:2] == "./":
-            result = base_path + relative_path[2:]
+            result = parent_path + relative_path[2:]
         else:
-            result = base_path + relative_path
+            result = parent_path + relative_path
 
         return result
 
@@ -340,6 +354,8 @@ class JsonRuleReader:
                 print("Ignoring key: " + key)
 
         if not policy:
+            if permissions is None:
+                raise ValueError("Invalid config file format. Missing 'permissions' at rule: " + rule_id)
             policy = Policy("runtime", uid, gid, Perm.from_string(permissions))
         else:
             # Allow for overrides of the policy

@@ -102,10 +102,15 @@ Sample json - check `rules.sample.json`.
 Format:
 ```json
 {
+  "path": "/base/path/to/my/convenient/location/not/required/",
   "policies": {},
   "rules": {}
 }
 ```
+
+Required entries are:
+- `rules` - not really required, but 
+
 
 `policies` is a set of reusable `uid`, `gid` and permissions (e.g. `rwxr-x---`). You refer to it in `rules` by refering
 to their id:

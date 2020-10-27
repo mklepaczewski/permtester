@@ -1,4 +1,5 @@
 {
+  "path": "/path/to/project/directory",
   "policies": {
     "web-readable": {
       "uid": 33,
