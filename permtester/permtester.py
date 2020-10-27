@@ -308,8 +308,6 @@ class JsonRuleReader:
                         path = parent_path + relative_path[2:]
                     else:
                         path = parent_path + relative_path
-
-                    print("Parsed path: " + path)
                 else:
                     path = rule_dict[key]
             elif key == "recursive":
