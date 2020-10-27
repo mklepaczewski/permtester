@@ -261,6 +261,35 @@ class JsonRuleReader:
             raise ValueError("No such policy: " + id)
         return self.policies[id]
 
+    def _construct_path(self, the_path: str, base_path: str) -> str:
+        if the_path[0] == "/":
+            # This is an absolute path
+            return the_path
+
+        # We have a relative path, make sure we also have a base_path
+        if base_path is None:
+            raise ValueError("Tried to create parent-relative path but there's no parent path: " + the_path)
+
+        # Make sure parent path ends with "/" as we have a relative path and we'll be appending to it
+        if base_path[-1] != "/":
+            base_path = base_path + "/"
+
+        relative_path = the_path
+        result = None
+
+        if len(relative_path) == 1:
+            # Handle "."
+            if relative_path[0] == ".":
+                result = base_path
+            else:
+                result = base_path + the_path
+        elif relative_path[0:2] == "./":
+            result = base_path + relative_path[2:]
+        else:
+            result = base_path + relative_path
+
+        return result
+
     def _parse_rule(self, rule_id: str, rule_dict: Dict) -> PermRule:
         # We inherit everything from parent, and change what is specified. But we don't inherit overrides
         policy = None
@@ -286,30 +315,7 @@ class JsonRuleReader:
 
         for key in rule_dict:
             if key == "path":
-                # Is it absolute or parent-relative path?
-                if rule_dict[key][0] != "/":
-                    # Assure we have a parent
-                    if len(self.rule_stack) == 0:
-                        raise ValueError("Tried to create parent-relative path but there's no parent: " + str(rule_dict[key]))
-                    parent_path =  self.rule_stack[-1].path
-                    # Make sure parent path ends with "/" as we have a relative path and we'll be appending to it
-                    if parent_path[-1] != "/":
-                        parent_path = parent_path + "/"
-
-                    relative_path = rule_dict[key]
-
-                    if len(relative_path) == 1:
-                        # Handle "."
-                        if relative_path[0] == ".":
-                            path = parent_path
-                        else:
-                            path = parent_path + rule_dict[key]
-                    elif relative_path[0:2] == "./":
-                        path = parent_path + relative_path[2:]
-                    else:
-                        path = parent_path + relative_path
-                else:
-                    path = rule_dict[key]
+                path = self._construct_path(rule_dict[key], self.rule_stack[-1].path if len(self.rule_stack) > 0 else None)
             elif key == "recursive":
                 recursive = rule_dict[key]
             elif key == "policy":
