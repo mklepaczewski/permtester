@@ -60,21 +60,14 @@ Sample json - check `rules.sample.json`.
       "gid": 103,
       "permissions": "rwXr-X---",
       "overrides": {
-        "certs-private-1": {
-          "path": "ca-key.pem",
-          "policy": "mysql-certs-private"
-        },
-        "certs-private-2": {
-          "path": "client-key.pem",
-          "policy": "mysql-certs-private"
-        },
-        "certs-private-3": {
-          "path": "private_key.pem",
-          "policy": "mysql-certs-private"
-        },
-        "certs-private-4": {
-          "path": "server-key.pem",
-          "policy": "mysql-certs-private"
+        "certs-private": {
+          "policy": "mysql-certs-private",
+          "paths": [
+            "ca-key.pem",
+            "client-key.pem",
+            "private_key.pem",
+            "server-key.pem"
+          ]
         },
 
         "certs-public-1": {

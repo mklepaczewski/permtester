@@ -260,10 +260,10 @@ class JsonRuleReader:
     def _parse_rules(self, rules: Dict) -> PermRuleGroup:
         parsed_rules = {}
         for rule_id in rules:
-            rule = self._parse_rule(rule_id, rules[rule_id])
-            if rule.path is None:
-                raise ValueError("Malformed config format - rule " + rule_id + " is without required 'path'")
-            parsed_rules[rule.path] = rule
+            for rule in self._parse_rule(rule_id, rules[rule_id]):
+                if rule.path is None:
+                    raise ValueError("Malformed config format - rule " + rule_id + " is without required 'path'")
+                parsed_rules[rule.path] = rule
 
         return PermRuleGroup(parsed_rules)
 
@@ -304,12 +304,12 @@ class JsonRuleReader:
 
         return result
 
-    def _parse_rule(self, rule_id: str, rule_dict: Dict) -> PermRule:
+    def _parse_rule(self, rule_id: str, rule_dict: Dict) -> List[PermRule]:
         # We inherit everything from parent, and change what is specified. But we don't inherit overrides
         policy = None
         recursive = True
         mustExist = True
-        path = None
+        paths = []
         overrides = None
 
         # for policy construction in case we don't inherit it
@@ -329,7 +329,10 @@ class JsonRuleReader:
 
         for key in rule_dict:
             if key == "path":
-                path = self._construct_path(rule_dict[key], self.rule_stack[-1].path if len(self.rule_stack) > 0 else None)
+                paths.append(self._construct_path(rule_dict[key], self.rule_stack[-1].path if len(self.rule_stack) > 0 else None))
+            elif key == "paths":
+                for path in rule_dict[key]:
+                    paths.append(self._construct_path(path, self.rule_stack[-1].path if len(self.rule_stack) > 0 else None))
             elif key == "recursive":
                 recursive = rule_dict[key]
             elif key == "policy":
@@ -371,15 +374,19 @@ class JsonRuleReader:
                 policy.permissions = Perm.from_string(permissions)
                 policy.id = "runtime"
 
-        result = PermRule(path, policy, recursive, mustExist, overrides)
+        results = []
+        for path in paths:
+            results.append(PermRule(path, policy, recursive, mustExist, overrides))
+        # result = PermRule(path, policy, recursive, mustExist, overrides)
 
         if "overrides" in rule_dict:
-            self.rule_stack.append(result)
+            self.rule_stack.append(results[0])
             overrides = self._parse_rules(rule_dict["overrides"])
             self.rule_stack.pop()
-            result.overrides = overrides
+            for rule in results:
+                rule.overrides = overrides
 
-        return result
+        return results
 
 
 class PermissionChecker:
