@@ -182,7 +182,7 @@ class PermRule:
                 p = p.rstrip("/")
                 if p in overrides.permCheckers:
                     raise Exception(f"Duplicate rules - one '{original_p}' and '{p}'")
-            self.overrides[p] = value
+            self.overrides.permCheckers[p] = value
 
     def has_override(self, path: str) -> bool:
         return self.get_override(path) is not None
@@ -446,13 +446,6 @@ class PermissionChecker:
         return results
 
     def process(self):
-        # for group_id, permChecker in self.rules.permCheckers.items():
-        #     if self.options.group and permChecker.id != self.options.group:
-        #         continue
-
-        # print("Checking group '" + group_id + "':")
-        # results = self.rules.test(fixer=self.fixer)
-
         results = self._process_rule_group(self.rules)
 
         for result in results:
