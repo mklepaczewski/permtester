@@ -111,7 +111,7 @@ class TestPerm(unittest.TestCase):
 class TestJsonRuleReader(unittest.TestCase):
     def test_json_rule(self):
         rule_reader = JsonRuleReader("rules.json")
-        rule_reader.get_rules()
+        rule_reader.get_config()
         self.assertTrue(True)
 
     def test_parse_policies(self):

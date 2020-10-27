@@ -1,6 +1,6 @@
 import os
 import stat as libstat
-from textwrap import wrap
+from argparse import ArgumentParser
 from typing import List, Dict
 import json
 import copy
@@ -164,23 +164,23 @@ class Policy:
         return f"[id={self.id}, uid={self.uid}, gid={self.gid}, permissions={self.permissions}]"
 
 class PermRule:
-    def __init__(self, path: str, policy: Policy, recursive: bool = True, must_exist: bool = True, overrides: Dict = None):
+    def __init__(self, path: str, policy: Policy, recursive: bool = True, must_exist: bool = True, overrides = None):
         self.path = path
         self.policy = policy
         self.recursive = recursive
         self.mustExist = must_exist
-        self.overrides = {}
-        overrides = overrides if overrides is not None else {}
+        self.overrides = PermRuleGroup({})
+        overrides = overrides if overrides is not None else PermRuleGroup({})
 
         # Directories in overrides are currently unsupported
         # normalize paths in case we have a directory path and it ends with "/"
 
-        for p in overrides.keys():
-            value = overrides[p]
+        for p in overrides.permCheckers.keys():
+            value = overrides.permCheckers[p]
             if p.endswith("/"):
                 original_p = p
                 p = p.rstrip("/")
-                if p in overrides:
+                if p in overrides.permCheckers:
                     raise Exception(f"Duplicate rules - one '{original_p}' and '{p}'")
             self.overrides[p] = value
 
@@ -188,8 +188,8 @@ class PermRule:
         return self.get_override(path) is not None
 
     def get_override(self, path: str):
-        if path in self.overrides:
-            return self.overrides[path]
+        if path in self.overrides.permCheckers:
+            return self.overrides.permCheckers[path]
 
     def test(self, path: str, fixer: PermFixer = None) -> List[CheckStatus]:
 
@@ -279,7 +279,7 @@ class JsonRuleReader:
         self.rule_stack = []
         self.policies = {}
 
-    def get_rules(self) -> Config:
+    def get_config(self) -> Config:
         # Make sure the file exists
         if not os.path.exists(self.path):
             raise IOError("File doesn't exist: " + self.path)
@@ -400,3 +400,134 @@ class JsonRuleReader:
             result.overrides = overrides
 
         return result
+
+class PermissionChecker:
+    def __init__(self):
+        parser = ArgumentParser()
+        parser.add_argument(
+            "-d",
+            "--dry-mode",
+            help="Dry mode - don't fix anything. Implies --fix",
+            default=False,
+            action='store_true'
+        )
+
+        parser.add_argument(
+            "-f",
+            "--fix",
+            help="Fix permissions when issues are spotted",
+            default=False,
+            action='store_true'
+        )
+
+        parser.add_argument(
+            "-g",
+            "--group",
+            help="Run only for specified group",
+            default=False
+        )
+
+        parser.add_argument(
+            "-r",
+            "--rules",
+            help="Rules files",
+            default="rules.json"
+        )
+
+        self.options = parser.parse_args()
+
+        fixer = None
+        if self.options.fix or self.options.dry_mode:
+            fixer = PermFixer(dry_mode=self.options.dry_mode)
+
+        self.config = JsonRuleReader(self.options.rules).get_config()
+        self.rules = self.config.rules
+        self.fixer = fixer
+
+    def _test_path(self, path: str, rule: PermRule):
+        results = []
+
+        # normalize path - we expect directories to not end with "/"
+        if path.endswith("/"):
+            path = path.rstrip("/")
+
+        if rule.has_override(path):
+            override_rule = rule.get_override(path)
+            return self._test_path(path, override_rule)
+
+        if not os.path.exists(path):
+            if not rule.mustExist:
+                results.append(CheckStatus(path,  "WARN", "Path doesn't exist - but it's not required"))
+                return results
+            results.append(CheckStatus(path,  "ERROR", "Path doesn't exist"))
+            return results
+        else:
+            results.append(CheckStatus(path,  "SUCCESS", "Path exists"))
+
+        stat = os.stat(path)
+
+        fix_uid_gid = False
+        if stat.st_uid != rule.policy.uid:
+            results.append(CheckStatus(path, "ERROR", f"Expected UID = {rule.policy.uid}, got {stat.st_uid}"))
+            fix_uid_gid = True
+        else:
+            results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {rule.policy.uid}"))
+
+        if stat.st_gid != rule.policy.gid:
+            results.append(CheckStatus(path, "ERROR", f"Expected GID = {rule.policy.gid}, got {stat.st_gid}"))
+            fix_uid_gid = True
+        else:
+            results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {rule.policy.gid}"))
+
+        if self.fixer and fix_uid_gid:
+            results.append(self.fixer.fix_uid_gid(path, rule.policy.uid, rule.policy.gid))
+
+        path_perms = Perm.from_stat(stat)
+        if not rule.policy.permissions.test(path_perms, path):
+            results.append(CheckStatus(path, "ERROR", f"Expected perms = {rule.policy.permissions}, got {path_perms}"))
+            if self.fixer:
+                results.append(self.fixer.fix_perms(path, rule.policy.permissions))
+        else:
+            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {rule.policy.permissions}, git {path_perms}"))
+
+        if rule.recursive and os.path.isdir(path):
+            with os.scandir(path) as it:
+                entry: os.DirEntry
+                for entry in it:
+                    results.extend(self._test_path(entry.path, rule))
+
+        return results
+
+    def _process_rule(self, rule : PermRule):
+        return self._test_path(rule.path, rule)
+
+
+    def _process_rule_group(self, rule_group: PermRuleGroup):
+        results = []
+        for perm_rule_id, perm_rule in rule_group.permCheckers.items():
+            results.extend(self._process_rule(perm_rule))
+        return results
+
+    def process(self):
+        # for group_id, permChecker in self.rules.permCheckers.items():
+        #     if self.options.group and permChecker.id != self.options.group:
+        #         continue
+
+        # print("Checking group '" + group_id + "':")
+        # results = self.rules.test(fixer=self.fixer)
+
+        results = self._process_rule_group(self.rules)
+
+        for result in results:
+            if result.status != "SUCCESS":
+                print(result)
+            else:
+                # pass
+                print(result)
+
+
+if __name__ == "__main__":
+    import pydevd_pycharm
+    pydevd_pycharm.settrace('192.168.1.2', port=12345, stdoutToServer=True, stderrToServer=True, suspend=False)
+    permChecker = PermissionChecker()
+    permChecker.process()
