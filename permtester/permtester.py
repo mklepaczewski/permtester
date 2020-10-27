@@ -191,61 +191,6 @@ class PermRule:
         if path in self.overrides.permCheckers:
             return self.overrides.permCheckers[path]
 
-    def test(self, path: str, fixer: PermFixer = None) -> List[CheckStatus]:
-
-        results = []
-
-        # normalize path - we expect directories to not end with "/"
-        if path.endswith("/"):
-            path = path.rstrip("/")
-
-        if self.has_override(path):
-            return self.get_override(path).test(path, fixer=fixer)
-
-        if not os.path.exists(path):
-            if not self.mustExist:
-                results.append(CheckStatus(path,  "WARN", "Path doesn't exist - but it's not required"))
-                return results
-            results.append(CheckStatus(path,  "ERROR", "Path doesn't exist"))
-            return results
-        else:
-            results.append(CheckStatus(path,  "SUCCESS", "Path exists"))
-
-        stat = os.stat(path)
-
-        fix_uid_gid = False
-        if stat.st_uid != self.policy.uid:
-            results.append(CheckStatus(path, "ERROR", f"Expected UID = {self.policy.uid}, got {stat.st_uid}"))
-            fix_uid_gid = True
-        else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {self.policy.uid}"))
-
-        if stat.st_gid != self.policy.gid:
-            results.append(CheckStatus(path, "ERROR", f"Expected GID = {self.policy.gid}, got {stat.st_gid}"))
-            fix_uid_gid = True
-        else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {self.policy.gid}"))
-
-        if fixer and fix_uid_gid:
-            results.append(fixer.fix_uid_gid(path, self.policy.uid, self.policy.gid))
-
-        path_perms = Perm.from_stat(stat)
-        if not self.policy.permissions.test(path_perms, path):
-            results.append(CheckStatus(path, "ERROR", f"Expected perms = {self.policy.permissions}, got {path_perms}"))
-            if fixer:
-                results.append(fixer.fix_perms(path, self.policy.permissions))
-        else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {self.policy.permissions}, git {path_perms}"))
-
-        if self.recursive and os.path.isdir(path):
-            with os.scandir(path) as it:
-                entry: os.DirEntry
-                for entry in it:
-                    results.extend(self.test(entry.path, fixer=fixer))
-
-        return results
-
-
 class SkipRule(PermRule):
     def __init__(self):
         pass
@@ -255,16 +200,8 @@ class SkipRule(PermRule):
 
 
 class PermRuleGroup:
-
     def __init__(self, perm_checkers: Dict[str, PermRule]):
         self.permCheckers = perm_checkers
-
-    def test(self, fixer: PermFixer = None) -> List[CheckStatus]:
-        results = []
-        for path, checker in self.permCheckers.items():
-            results.extend(checker.test(path, fixer=fixer))
-        return results
-
 
 class Config:
     def __init__(self, policies: Dict[str, Policy], rules: PermRuleGroup):
