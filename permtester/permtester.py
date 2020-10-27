@@ -345,55 +345,15 @@ class JsonRuleReader:
 
 
 class PermissionChecker:
-    def __init__(self):
-        parser = ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-        parser.add_argument(
-            "-d",
-            "--dry-mode",
-            help="Dry mode - don't fix anything. Implies --fix",
-            default=False,
-            action='store_true'
-        )
+    def __init__(self, rules: PermRuleGroup, fix: bool, dry_mode: bool, verbose: bool):
+        self.rules = rules
+        self.fix = fix
+        self.dry_mode = dry_mode
+        self.verbose = verbose
 
-        parser.add_argument(
-            "-f",
-            "--fix",
-            help="Fix permissions when issues are spotted",
-            default=False,
-            action='store_true'
-        )
-
-        parser.add_argument(
-            "-g",
-            "--group",
-            help="Run only for specified group",
-            default=False
-        )
-
-        parser.add_argument(
-            "-r",
-            "--rules",
-            help="Rules file",
-            default="rules.json"
-        )
-
-        parser.add_argument(
-            "-v",
-            "--verbose",
-            help="Verbose, reports successful checks",
-            default=False,
-            action='store_true'
-        )
-
-        self.options = parser.parse_args()
-
-        fixer = None
-        if self.options.fix or self.options.dry_mode:
-            fixer = PermFixer(dry_mode=self.options.dry_mode)
-
-        self.config = JsonRuleReader(self.options.rules).get_config()
-        self.rules = self.config.rules
-        self.fixer = fixer
+        self.fixer = None
+        if self.fix or self.dry_mode:
+            self.fixer = PermFixer(dry_mode=self.dry_mode)
 
     def _test_path(self, path: str, rule: PermRule):
         results = []
@@ -465,12 +425,52 @@ class PermissionChecker:
         for result in results:
             if result.status != "SUCCESS":
                 print(result)
-            elif self.options.verbose:
+            elif self.verbose:
                 print(result)
 
 
 if __name__ == "__main__":
-    import pydevd_pycharm
-    pydevd_pycharm.settrace('192.168.1.2', port=12345, stdoutToServer=True, stderrToServer=True, suspend=False)
-    permChecker = PermissionChecker()
+    parser = ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument(
+        "-d",
+        "--dry-mode",
+        help="Dry mode - don't fix anything. Implies --fix",
+        default=False,
+        action='store_true'
+    )
+
+    parser.add_argument(
+        "-f",
+        "--fix",
+        help="Fix permissions when issues are spotted",
+        default=False,
+        action='store_true'
+    )
+
+    parser.add_argument(
+        "-g",
+        "--group",
+        help="Run only for specified group",
+        default=False
+    )
+
+    parser.add_argument(
+        "-r",
+        "--rules",
+        help="Rules file",
+        default="rules.json"
+    )
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        help="Verbose, reports successful checks",
+        default=False,
+        action='store_true'
+    )
+
+    options = parser.parse_args()
+    config = JsonRuleReader(options.rules).get_config()
+
+    permChecker = PermissionChecker(config.rules, options.fix, options.dry_mode, options.verbose)
     permChecker.process()
