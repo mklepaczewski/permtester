@@ -30,9 +30,10 @@ class UnitPerm:
         if self.execute == "?":
             execute = True
         elif self.execute == "X":
-            if os.path.isdir(path) and not other.execute:
+            if os.path.isdir(path) and other.execute != 'x':
                 execute = False
             else:
+                # todo: here's a bug - files with expected '-' or missing 'x' are skipped
                 execute = True
         else:
             execute = self.execute == other.execute
