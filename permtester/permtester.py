@@ -2,7 +2,8 @@ import argparse
 import os
 import stat as libstat
 from argparse import ArgumentParser
-from typing import List, Dict
+from os.path import abspath
+from typing import List, Dict, Optional
 import json
 import copy
 
@@ -217,11 +218,14 @@ class Config:
 
 
 class JsonRuleReader:
-    def __init__(self, path: str):
+    # base_path overrides whatever we find in the configuration file
+    def __init__(self, path: str, base_path: Optional[str]):
         self.path = path
 
         self.rule_stack = []
         self.policies = {}
+
+        self.base_path = base_path
 
     def get_config(self) -> Config:
         # Make sure the file exists
@@ -238,7 +242,13 @@ class JsonRuleReader:
         decoded = json.loads(data)
 
         # base path
-        self.base_path = decoded['path'] if 'path' in decoded else None
+        if not self.base_path:
+            self.base_path = decoded['path'] if 'path' in decoded else None
+            if not self.base_path:
+                raise Exception("Neither path in configuration file was passed nor explicit base path through CLI")
+
+        # Allow --base-dir to be '.' or some relative path
+        self.base_path = abspath(self.base_path)
 
         if 'policies' in decoded:
             self.policies = self._parse_policies(decoded['policies'])

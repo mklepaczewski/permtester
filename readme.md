@@ -31,6 +31,7 @@ python3 -m permtester -r rules.json
 Sample json - check `rules.sample.json`. 
 ```json
 {
+  "path": "/optional/base-path/",
   "policies": {
     "web-readable": {
       "uid": 33,
@@ -102,6 +103,7 @@ Format:
 ```
 
 Required entries are:
+- `path` - not required, but if missing you will need to specify it on CLI using `-b` or `--base-dir` 
 - `rules` - not really required, but 
 
 

@@ -44,8 +44,16 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
         action='store_true'
     )
 
+    parser.add_argument(
+        "-b",
+        "--base-dir",
+        help="Base directory to use.",
+        default=None,
+    )
+
     options = parser.parse_args()
-    config = JsonRuleReader(options.rules).get_config()
+
+    config = JsonRuleReader(options.rules, options.base_dir).get_config()
 
     permChecker = PermissionChecker(config.rules, options.fix, options.dry_mode, options.verbose)
     permChecker.process()
