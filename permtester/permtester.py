@@ -169,11 +169,12 @@ class Policy:
 
 
 class PermRule:
-    def __init__(self, path: str, policy: Policy, recursive: bool = True, must_exist: bool = True, overrides = None):
+    def __init__(self, path: str, policy: Policy, recursive: bool = True, must_exist: bool = True, overrides = None, rule_id: str = None):
         self.path = path
         self.policy = policy
         self.recursive = recursive
         self.mustExist = must_exist
+        self.ruleId = rule_id
         self.overrides = PermRuleGroup({})
         overrides = overrides if overrides is not None else PermRuleGroup({})
 
@@ -387,7 +388,7 @@ class JsonRuleReader:
 
         results = []
         for path in paths:
-            results.append(PermRule(path, policy, recursive, mustExist, overrides))
+            results.append(PermRule(path, policy, recursive, mustExist, overrides, rule_id))
         # result = PermRule(path, policy, recursive, mustExist, overrides)
 
         if "overrides" in rule_dict:
