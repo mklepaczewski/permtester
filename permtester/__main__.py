@@ -60,6 +60,7 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
         action='append',
         # nargs='*'
     )
+
     parser.add_argument(
         "-b",
         "--base-dir",
@@ -67,7 +68,18 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
         default=None,
     )
 
+    parser.add_argument(
+        "--debug-host",
+        help="PyCharm debug host, format: ip:port",
+        default=None
+    )
+
     options = parser.parse_args()
+
+    if options.debug_host:
+        host,port = options.debug_host.split(":")
+        import pydevd_pycharm
+        pydevd_pycharm.settrace(host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False)
 
     config = JsonRuleReader(options.rules, options.base_dir).get_config()
 
