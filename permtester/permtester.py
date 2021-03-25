@@ -388,6 +388,7 @@ class JsonRuleReader:
 
         results = []
         for path in paths:
+            path = self.base_path + path;
             results.append(PermRule(path, policy, recursive, mustExist, overrides, rule_id))
         # result = PermRule(path, policy, recursive, mustExist, overrides)
 
