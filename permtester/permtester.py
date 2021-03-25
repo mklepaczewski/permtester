@@ -466,8 +466,8 @@ class PermissionChecker:
             else:
                 with os.scandir(path) as it:
                     entry: os.DirEntry
-                for entry in it:
-                    results.extend(self._test_path(entry.path, rule))
+                    for entry in it:
+                        results.extend(self._test_path(entry.path, rule))
 
         return results
 
