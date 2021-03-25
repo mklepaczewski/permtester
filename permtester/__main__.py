@@ -45,6 +45,14 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
     )
 
     parser.add_argument(
+        "-l",
+        "--list-rules",
+        help="List available permission rules",
+        default=False,
+        action='store_true'
+    )
+
+    parser.add_argument(
         "-b",
         "--base-dir",
         help="Base directory to use.",
@@ -54,6 +62,11 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
     options = parser.parse_args()
 
     config = JsonRuleReader(options.rules, options.base_dir).get_config()
+
+    if options.list_rules:
+        for perm_rule_id, perm_rule in config.rules.permCheckers.items():
+            print(perm_rule.ruleId + ":" + perm_rule.path)
+        exit(0)
 
     permChecker = PermissionChecker(config.rules, options.fix, options.dry_mode, options.verbose)
     permChecker.process()
