@@ -53,6 +53,14 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
     )
 
     parser.add_argument(
+        "-i",
+        "--ignore-rule",
+        help="Ignore specific rule by rule id. Can be specified multiple times",
+        default=None,
+        action='append',
+        # nargs='*'
+    )
+    parser.add_argument(
         "-b",
         "--base-dir",
         help="Base directory to use.",
@@ -68,5 +76,5 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
             print(perm_rule.ruleId + ":" + perm_rule.path)
         exit(0)
 
-    permChecker = PermissionChecker(config.rules, options.fix, options.dry_mode, options.verbose)
+    permChecker = PermissionChecker(config.rules, options.fix, options.dry_mode, options.verbose, options.ignore_rule)
     permChecker.process()

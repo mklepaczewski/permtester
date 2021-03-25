@@ -402,11 +402,12 @@ class JsonRuleReader:
 
 
 class PermissionChecker:
-    def __init__(self, rules: PermRuleGroup, fix: bool, dry_mode: bool, verbose: bool):
+    def __init__(self, rules: PermRuleGroup, fix: bool, dry_mode: bool, verbose: bool, ignored_rules: List[str] = None ):
         self.rules = rules
         self.fix = fix
         self.dry_mode = dry_mode
         self.verbose = verbose
+        self.ignored_rules = ignored_rules if ignored_rules else []
 
         self.fixer = None
         if self.fix or self.dry_mode:
@@ -466,6 +467,9 @@ class PermissionChecker:
 
         return results
 
+    def _is_ignored(self, rule: PermRule) -> bool:
+        return rule.ruleId in self.ignored_rules
+
     def _process_rule(self, rule : PermRule):
         return self._test_path(rule.path, rule)
 
@@ -473,7 +477,10 @@ class PermissionChecker:
     def _process_rule_group(self, rule_group: PermRuleGroup):
         results = []
         for perm_rule_id, perm_rule in rule_group.permCheckers.items():
-            results.extend(self._process_rule(perm_rule))
+            if not self._is_ignored(perm_rule):
+                results.extend(self._process_rule(perm_rule))
+            else:
+                results.append(CheckStatus(perm_rule.path, "IGNORED", f"Rule ignored: {perm_rule.ruleId}"))
         return results
 
     def process(self):
