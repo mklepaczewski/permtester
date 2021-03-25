@@ -457,7 +457,7 @@ class PermissionChecker:
             if self.fixer:
                 results.append(self.fixer.fix_perms(path, rule.policy.permissions))
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {rule.policy.permissions}, git {path_perms}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {rule.policy.permissions}, got {path_perms}"))
 
         if rule.recursive and os.path.isdir(path):
             with os.scandir(path) as it:
