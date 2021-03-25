@@ -392,11 +392,10 @@ class JsonRuleReader:
         # result = PermRule(path, policy, recursive, mustExist, overrides)
 
         if "overrides" in rule_dict:
-            self.rule_stack.append(results[0])
-            overrides = self._parse_rules(rule_dict["overrides"])
-            self.rule_stack.pop()
             for rule in results:
-                rule.overrides = overrides
+                self.rule_stack.append(rule)
+                rule.overrides = self._parse_rules(rule_dict["overrides"])
+                self.rule_stack.pop()
 
         return results
 
