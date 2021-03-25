@@ -461,8 +461,12 @@ class PermissionChecker:
             results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {rule.policy.permissions}, got {path_perms}"))
 
         if rule.recursive and os.path.isdir(path):
-            with os.scandir(path) as it:
-                entry: os.DirEntry
+            # Make sure we have permission to list the directory
+            if not os.access(path, os.X_OK):
+                results.append(CheckStatus(path, "ERROR", f"Recursive scan required, but current user can't search the directory. Perms = {rule.policy.permissions}, got {path_perms}"))
+            else:
+                with os.scandir(path) as it:
+                    entry: os.DirEntry
                 for entry in it:
                     results.extend(self._test_path(entry.path, rule))
 
