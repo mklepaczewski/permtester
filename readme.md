@@ -1,3 +1,12 @@
+# Installation
+```bash
+pip3 install git+https://github.com/mklepaczewski/permtester.git
+```
+Running:
+```bash
+python3 -m permtester <command-line-arguments>
+```
+
 # Purpose
 
 Unit tests for file permissions / ownership. Sort of ;-)
