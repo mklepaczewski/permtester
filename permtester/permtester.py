@@ -9,13 +9,17 @@ import copy
 
 
 class CheckStatus:
-    def __init__(self, path: str, status: str,  message: str):
+    def __init__(self, path: str, status: str,  message: str, rule = None):
         self.path = path
         self.message = message
         self.status = status
+        self.rule = rule
 
     def __repr__(self):
-        return "[" + self.status + "]\t'" + self.path + "' => " + self.message
+        if self.rule:
+            return "[" + self.status + "] [" + self.rule.ruleId + "]\t'" + self.path + "' => " + self.message
+        else:
+            return "[" + self.status + "]\t'" + self.path + "' => " + self.message
 
 
 class UnitPerm:
@@ -203,7 +207,7 @@ class SkipRule(PermRule):
         pass
 
     def test(self, path: str, fixer: PermFixer = None) -> List[CheckStatus]:
-        return [ CheckStatus(path, "WARN", "Skipped") ]
+        return [ CheckStatus(path, "WARN", "Skipped", self) ]
 
 
 class PermRuleGroup:
@@ -425,43 +429,43 @@ class PermissionChecker:
 
         if not os.path.exists(path):
             if not rule.mustExist:
-                results.append(CheckStatus(path,  "WARN", "Path doesn't exist - but it's not required"))
+                results.append(CheckStatus(path,  "WARN", "Path doesn't exist - but it's not required", rule))
                 return results
-            results.append(CheckStatus(path,  "ERROR", "Path doesn't exist"))
+            results.append(CheckStatus(path,  "ERROR", "Path doesn't exist", rule))
             return results
         else:
-            results.append(CheckStatus(path,  "SUCCESS", "Path exists"))
+            results.append(CheckStatus(path,  "SUCCESS", "Path exists", rule))
 
         stat = os.stat(path)
 
         fix_uid_gid = False
         if stat.st_uid != rule.policy.uid:
-            results.append(CheckStatus(path, "ERROR", f"Expected UID = {rule.policy.uid}, got {stat.st_uid}"))
+            results.append(CheckStatus(path, "ERROR", f"Expected UID = {rule.policy.uid}, got {stat.st_uid}", rule))
             fix_uid_gid = True
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {rule.policy.uid}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct UID = {rule.policy.uid}", rule))
 
         if stat.st_gid != rule.policy.gid:
-            results.append(CheckStatus(path, "ERROR", f"Expected GID = {rule.policy.gid}, got {stat.st_gid}"))
+            results.append(CheckStatus(path, "ERROR", f"Expected GID = {rule.policy.gid}, got {stat.st_gid}", rule))
             fix_uid_gid = True
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {rule.policy.gid}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct GID = {rule.policy.gid}", rule))
 
         if self.fixer and fix_uid_gid:
             results.append(self.fixer.fix_uid_gid(path, rule.policy.uid, rule.policy.gid))
 
         path_perms = Perm.from_stat(stat)
         if not rule.policy.permissions.test(path_perms, path):
-            results.append(CheckStatus(path, "ERROR", f"Expected perms = {rule.policy.permissions}, got {path_perms}"))
+            results.append(CheckStatus(path, "ERROR", f"Expected perms = {rule.policy.permissions}, got {path_perms}", rule))
             if self.fixer:
                 results.append(self.fixer.fix_perms(path, rule.policy.permissions))
         else:
-            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {rule.policy.permissions}, got {path_perms}"))
+            results.append(CheckStatus(path, "SUCCESS", f"Correct perms = {rule.policy.permissions}, got {path_perms}", rule))
 
         if rule.recursive and os.path.isdir(path):
             # Make sure we have permission to list the directory
             if not os.access(path, os.X_OK):
-                results.append(CheckStatus(path, "ERROR", f"Recursive scan required, but current user can't search the directory. Perms = {rule.policy.permissions}, got {path_perms}"))
+                results.append(CheckStatus(path, "ERROR", f"Recursive scan required, but current user can't search the directory. Perms = {rule.policy.permissions}, got {path_perms}", rule))
             else:
                 with os.scandir(path) as it:
                     entry: os.DirEntry
@@ -483,7 +487,7 @@ class PermissionChecker:
             if not self._is_ignored(perm_rule):
                 results.extend(self._process_rule(perm_rule))
             else:
-                results.append(CheckStatus(perm_rule.path, "IGNORED", f"Rule ignored: {perm_rule.ruleId}"))
+                results.append(CheckStatus(perm_rule.path, "IGNORED", f"Rule ignored: {perm_rule.ruleId}", perm_rule))
         return results
 
     def process(self):
