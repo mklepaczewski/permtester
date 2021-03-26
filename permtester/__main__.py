@@ -2,7 +2,7 @@ import argparse
 from argparse import ArgumentParser
 
 from permtester import JsonRuleReader
-from permtester.permtester import PermissionChecker
+from permtester.permtester import PermissionChecker, PermRuleGroup
 
 if __name__ == "__main__" or __name__ == "permtester.permtester":
     parser = ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -62,6 +62,15 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
     )
 
     parser.add_argument(
+        "-o",
+        "--only-rule",
+        help="Run only this rule (can be specified multiple times)",
+        default=None,
+        action='append',
+        # nargs='*'
+    )
+
+    parser.add_argument(
         "-b",
         "--base-dir",
         help="Base directory to use.",
@@ -82,6 +91,10 @@ if __name__ == "__main__" or __name__ == "permtester.permtester":
         pydevd_pycharm.settrace(host, port=int(port), stdoutToServer=True, stderrToServer=True, suspend=False)
 
     config = JsonRuleReader(options.rules, options.base_dir).get_config()
+
+    if options.only_rule:
+        permChecks = {k: v for k,v in config.rules.permCheckers.items() if v.ruleId in options.only_rule}
+        config.rules = PermRuleGroup(permChecks)
 
     if options.list_rules:
         for perm_rule_id, perm_rule in config.rules.permCheckers.items():
